@@ -5,8 +5,10 @@ import { Chamado, NewChamado, ChamadoStats, FilterOptions } from './types/chamad
 import { ChamadoStatsComponent } from './components/ChamadoStats';
 import { FilterBar } from './components/FilterBar';
 import { NewChamadoForm } from './components/NewChamadoForm';
+import { Auth } from './components/Auth';
 
 function App() {
+  const [session, setSession] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
     status: 'aberto',
     pendencia: 'all',
@@ -31,8 +33,24 @@ function App() {
   });
 
   useEffect(() => {
-    fetchChamados();
+    checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setSession(!!session);
+  };
+
+  useEffect(() => {
+    if (session) {
+      fetchChamados();
+    }
+  }, [session]);
 
   const fetchChamados = async () => {
     try {
@@ -42,11 +60,7 @@ function App() {
         .order('data_abertura', { ascending: true });
 
       if (error) {
-        if (error.message.includes('connect to Supabase')) {
-          setError('Please connect to Supabase using the "Connect to Supabase" button in the top right corner.');
-        } else {
-          setError('Error fetching data. Please try again later.');
-        }
+        setError('Error fetching data. Please try again later.');
         return;
       }
 
@@ -138,6 +152,15 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(false);
+  };
+
+  if (!session) {
+    return <Auth onLogin={() => setSession(true)} />;
+  }
+
   const filteredTickets = tickets.filter(ticket => {
     const matchesStatus = filters.status === 'all' || ticket.status.toLowerCase() === filters.status.toLowerCase();
     const matchesPendencia = filters.pendencia === 'all' || ticket.pendencia_retorno === filters.pendencia;
@@ -159,34 +182,48 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Controle de Chamados (Nordeste/Fácil)</h1>
-        
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Controle de Chamados (Nordeste/Fácil)</h1>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Sair
+          </button>
+        </div>
         
         <ChamadoStatsComponent stats={stats} />
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <FilterBar
-            filters={filters}
-            onFilterChange={setFilters}
-            onAddNew={() => setIsAddingTicket(true)}
-            stats={{ nordeste: stats.nordeste, facil: stats.facil }}
-          />
+        <div className="mt-8 bg-white rounded-lg shadow">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Lista de Chamados</h2>
+              <button
+                onClick={() => setIsAddingTicket(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Adicionar Chamado
+              </button>
+            </div>
 
-          {isAddingTicket && (
-            <NewChamadoForm
-              chamado={newTicket}
-              onChange={setNewTicket}
-              onSubmit={handleAddTicket}
-              onCancel={() => setIsAddingTicket(false)}
-            />
-          )}
+            <FilterBar filters={filters} onFilterChange={setFilters} />
 
-          <div className="overflow-x-auto">
+            {isAddingTicket && (
+              <NewChamadoForm
+                chamado={newTicket}
+                onChange={setNewTicket}
+                onSubmit={handleAddTicket}
+                onCancel={() => setIsAddingTicket(false)}
+              />
+            )}
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
+<div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
@@ -209,106 +246,109 @@ function App() {
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.titulo}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.data_abertura}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {editingSLA === ticket.id ? (
-                        <div className="flex gap-2">
-                          <select
-                            className="border rounded-md px-2 py-1"
-                            value={ticket.cumpriu_sla}
-                            onChange={(e) => handleEditSLA(ticket.id, e.target.value as 'Sim' | 'Não')}
-                          >
-                            <option value="Sim">Sim</option>
-                            <option value="Não">Não</option>
-                          </select>
-                          <button
-                            onClick={() => setEditingSLA(null)}
-                            className="p-1 text-red-600 hover:text-red-800"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className={ticket.cumpriu_sla === 'Sim' ? 'text-green-600' : 'text-red-600'}>
-                            {ticket.cumpriu_sla}
-                          </span>
-                          <button
-                            onClick={() => setEditingSLA(ticket.id)}
-                            className="p-1 text-blue-600 hover:text-blue-800"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td className={`px-4 py-3 text-sm ${
-                      ticket.pendencia_retorno === 'Nordeste' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {editingPendencia === ticket.id ? (
-                        <div className="flex gap-2">
-                          <select
-                            className="border rounded-md px-2 py-1"
-                            value={ticket.pendencia_retorno}
-                            onChange={(e) => handleEditPendencia(ticket.id, e.target.value as 'Fácil' | 'Nordeste')}
-                          >
-                            <option value="Fácil">Fácil</option>
-                            <option value="Nordeste">Nordeste</option>
-                          </select>
-                          <button
-                            onClick={() => setEditingPendencia(null)}
-                            className="p-1 text-red-600 hover:text-red-800"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {ticket.pendencia_retorno}
-                          <button
-                            onClick={() => setEditingPendencia(ticket.id)}
-                            className="p-1 text-blue-600 hover:text-blue-800"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{ticket.usuario_resp}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        ticket.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        {editingSLA === ticket.id ? (
+                          <div className="flex gap-2">
+                            <select
+                              className="border rounded-md px-2 py-1"
+                              value={ticket.cumpriu_sla}
+                              onChange={(e) => handleEditSLA(ticket.id, e.target.value as 'Sim' | 'Não')}
+                            >
+                              <option value="Sim">Sim</option>
+                              <option value="Não">Não</option>
+                            </select>
+                            <button
+                              onClick={() => setEditingSLA(null)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className={ticket.cumpriu_sla === 'Sim' ? 'text-green-600' : 'text-red-600'}>
+                              {ticket.cumpriu_sla}
+                            </span>
+                            <button
+                              onClick={() => setEditingSLA(ticket.id)}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        ticket.pendencia_retorno === 'Nordeste' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                       }`}>
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {editingTicket === ticket.id ? (
-                        <div className="flex gap-2">
+                        {editingPendencia === ticket.id ? (
+                          <div className="flex gap-2">
+                            <select
+                              className="border rounded-md px-2 py-1"
+                              value={ticket.pendencia_retorno}
+                              onChange={(e) => handleEditPendencia(ticket.id, e.target.value as 'Fácil' | 'Nordeste')}
+                            >
+                              <option value="Fácil">Fácil</option>
+                              <option value="Nordeste">Nordeste</option>
+                            </select>
+                            <button
+                              onClick={() => setEditingPendencia(null)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {ticket.pendencia_retorno}
+                            <button
+                              onClick={() => setEditingPendencia(ticket.id)}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {ticket.usuario_resp}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          ticket.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {editingTicket === ticket.id ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditTicket(ticket.id)}
+                              className="p-1 text-green-600 hover:text-green-800"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => setEditingTicket(null)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => handleEditTicket(ticket.id)}
-                            className="p-1 text-green-600 hover:text-green-800"
+                            onClick={() => setEditingTicket(ticket.id)}
+                            className="p-1 text-blue-600 hover:text-blue-800"
                           >
-                            <Check size={16} />
+                            <Edit2 size={16} />
                           </button>
-                          <button
-                            onClick={() => setEditingTicket(null)}
-                            className="p-1 text-red-600 hover:text-red-800"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setEditingTicket(ticket.id)}
-                          className="p-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
