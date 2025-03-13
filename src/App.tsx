@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Filter, Search, Plus, Edit2, Check, X } from 'lucide-react';
+import { Edit2, Check, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
-import { Chamado, NewChamado } from './types/chamado';
+import { Chamado, NewChamado, ChamadoStats, FilterOptions } from './types/chamado';
+import { ChamadoStatsComponent } from './components/ChamadoStats';
+import { FilterBar } from './components/FilterBar';
+import { NewChamadoForm } from './components/NewChamadoForm';
 
 function App() {
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<FilterOptions>({
+    status: 'all',
+    pendencia: 'all',
+    search: ''
+  });
+  
   const [isAddingTicket, setIsAddingTicket] = useState(false);
   const [editingTicket, setEditingTicket] = useState<number | null>(null);
   const [editingPendencia, setEditingPendencia] = useState<number | null>(null);
   const [editingSLA, setEditingSLA] = useState<number | null>(null);
-  
   const [tickets, setTickets] = useState<Chamado[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [newTicket, setNewTicket] = useState<NewChamado>({
     chamado_facil: '',
     chamado_sd: '',
@@ -32,11 +39,21 @@ function App() {
       const { data, error } = await supabase
         .from('Chamados_SH')
         .select('*')
-        .order('data_abertura', { ascending: false });
+        .order('data_abertura', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('connect to Supabase')) {
+          setError('Please connect to Supabase using the "Connect to Supabase" button in the top right corner.');
+        } else {
+          setError('Error fetching data. Please try again later.');
+        }
+        return;
+      }
+
+      setError(null);
       setTickets(data || []);
     } catch (error) {
+      setError('Error connecting to the database. Please check your connection.');
       console.error('Error fetching chamados:', error);
     }
   };
@@ -63,6 +80,7 @@ function App() {
       setIsAddingTicket(false);
     } catch (error) {
       console.error('Error adding ticket:', error);
+      setError('Error adding new ticket. Please try again.');
     }
   };
 
@@ -82,10 +100,11 @@ function App() {
       setEditingTicket(null);
     } catch (error) {
       console.error('Error updating ticket:', error);
+      setError('Error updating ticket status. Please try again.');
     }
   };
 
-  const handleEditPendencia = async (id: number, value: string) => {
+  const handleEditPendencia = async (id: number, value: 'Fácil' | 'Nordeste') => {
     try {
       const { error } = await supabase
         .from('Chamados_SH')
@@ -98,10 +117,11 @@ function App() {
       setEditingPendencia(null);
     } catch (error) {
       console.error('Error updating pendencia:', error);
+      setError('Error updating pendência. Please try again.');
     }
   };
 
-  const handleEditSLA = async (id: number, value: string) => {
+  const handleEditSLA = async (id: number, value: 'Sim' | 'Não') => {
     try {
       const { error } = await supabase
         .from('Chamados_SH')
@@ -114,132 +134,56 @@ function App() {
       setEditingSLA(null);
     } catch (error) {
       console.error('Error updating SLA:', error);
+      setError('Error updating SLA status. Please try again.');
     }
   };
 
   const filteredTickets = tickets.filter(ticket => {
-    const matchesStatus = filterStatus === 'all' || ticket.status.toLowerCase() === filterStatus.toLowerCase();
-    const matchesSearch = 
-      ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.chamado_facil.includes(searchTerm) ||
-      ticket.chamado_sd.includes(searchTerm);
-    return matchesStatus && matchesSearch;
+    const matchesStatus = filters.status === 'all' || ticket.status.toLowerCase() === filters.status.toLowerCase();
+    const matchesPendencia = filters.pendencia === 'all' || ticket.pendencia_retorno === filters.pendencia;
+    const matchesSearch = filters.search === '' || 
+      (ticket.titulo?.toLowerCase().includes(filters.search.toLowerCase()) ||
+       ticket.chamado_facil?.includes(filters.search) ||
+       ticket.chamado_sd?.includes(filters.search));
+
+    return matchesStatus && matchesPendencia && matchesSearch;
   });
+
+  const stats: ChamadoStats = {
+    abertos: tickets.filter(t => t.status === 'Aberto').length,
+    concluidos: tickets.filter(t => t.status === 'Concluído').length,
+    nordeste: tickets.filter(t => t.pendencia_retorno === 'Nordeste').length,
+    facil: tickets.filter(t => t.pendencia_retorno === 'Fácil').length
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Sistema de Controle de Chamados</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Controle de Chamados (Nordeste/Fácil)</h1>
+        
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+        
+        <ChamadoStatsComponent stats={stats} />
         
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Filter className="text-gray-500" />
-                <select
-                  className="border rounded-md px-3 py-2"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">Todos os Status</option>
-                  <option value="aberto">Abertos</option>
-                  <option value="concluído">Concluídos</option>
-                </select>
-              </div>
-              
-              <button
-                onClick={() => setIsAddingTicket(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Plus size={16} />
-                Novo Chamado
-              </button>
-            </div>
-            
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Pesquisar chamados..."
-                className="pl-10 pr-4 py-2 border rounded-md w-full md:w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
+          <FilterBar
+            filters={filters}
+            onFilterChange={setFilters}
+            onAddNew={() => setIsAddingTicket(true)}
+            stats={{ nordeste: stats.nordeste, facil: stats.facil }}
+          />
 
           {isAddingTicket && (
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-              <h2 className="text-lg font-semibold mb-4">Novo Chamado</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Chamado Fácil"
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.chamado_facil}
-                  onChange={(e) => setNewTicket({...newTicket, chamado_facil: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="Chamado SD"
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.chamado_sd}
-                  onChange={(e) => setNewTicket({...newTicket, chamado_sd: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="Título"
-                  className="border rounded-md px-3 py-2 md:col-span-2"
-                  value={newTicket.titulo}
-                  onChange={(e) => setNewTicket({...newTicket, titulo: e.target.value})}
-                />
-                <select
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.pendencia_retorno}
-                  onChange={(e) => setNewTicket({...newTicket, pendencia_retorno: e.target.value})}
-                >
-                  <option value="Fácil">Fácil</option>
-                  <option value="Nordeste">Nordeste</option>
-                </select>
-                <select
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.cumpriu_sla}
-                  onChange={(e) => setNewTicket({...newTicket, cumpriu_sla: e.target.value})}
-                >
-                  <option value="Sim">Sim</option>
-                  <option value="Não">Não</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="Usuário Responsável"
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.usuario_resp}
-                  onChange={(e) => setNewTicket({...newTicket, usuario_resp: e.target.value})}
-                />
-
-<input
-                  type="date"
-                  placeholder="Data"
-                  className="border rounded-md px-3 py-2"
-                  value={newTicket.data_abertura}
-                  onChange={(e) => setNewTicket({...newTicket, data_abertura: e.target.value})}
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  onClick={() => setIsAddingTicket(false)}
-                  className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddTicket}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Adicionar
-                </button>
-              </div>
-            </div>
+            <NewChamadoForm
+              chamado={newTicket}
+              onChange={setNewTicket}
+              onSubmit={handleAddTicket}
+              onCancel={() => setIsAddingTicket(false)}
+            />
           )}
 
           <div className="overflow-x-auto">
@@ -270,7 +214,7 @@ function App() {
                           <select
                             className="border rounded-md px-2 py-1"
                             value={ticket.cumpriu_sla}
-                            onChange={(e) => handleEditSLA(ticket.id, e.target.value)}
+                            onChange={(e) => handleEditSLA(ticket.id, e.target.value as 'Sim' | 'Não')}
                           >
                             <option value="Sim">Sim</option>
                             <option value="Não">Não</option>
@@ -284,7 +228,9 @@ function App() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          {ticket.cumpriu_sla}
+                          <span className={ticket.cumpriu_sla === 'Sim' ? 'text-green-600' : 'text-red-600'}>
+                            {ticket.cumpriu_sla}
+                          </span>
                           <button
                             onClick={() => setEditingSLA(ticket.id)}
                             className="p-1 text-blue-600 hover:text-blue-800"
@@ -294,13 +240,15 @@ function App() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
+                    <td className={`px-4 py-3 text-sm ${
+                      ticket.pendencia_retorno === 'Nordeste' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                    }`}>
                       {editingPendencia === ticket.id ? (
                         <div className="flex gap-2">
                           <select
                             className="border rounded-md px-2 py-1"
                             value={ticket.pendencia_retorno}
-                            onChange={(e) => handleEditPendencia(ticket.id, e.target.value)}
+                            onChange={(e) => handleEditPendencia(ticket.id, e.target.value as 'Fácil' | 'Nordeste')}
                           >
                             <option value="Fácil">Fácil</option>
                             <option value="Nordeste">Nordeste</option>
@@ -326,8 +274,9 @@ function App() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.usuario_resp}</td>
                     <td className="px-4 py-3 text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                        ${ticket.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        ticket.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
                         {ticket.status}
                       </span>
                     </td>
