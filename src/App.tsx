@@ -8,7 +8,7 @@ import { NewChamadoForm } from './components/NewChamadoForm';
 
 function App() {
   const [filters, setFilters] = useState<FilterOptions>({
-    status: 'all',
+    status: 'aberto',
     pendencia: 'all',
     search: ''
   });
