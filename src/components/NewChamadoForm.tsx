@@ -77,6 +77,19 @@ export function NewChamadoForm({ chamado, onChange, onSubmit, onCancel }: NewCha
             onChange={(e) => onChange({ ...chamado, usuario_resp: e.target.value })}
           />
         </div>
+      
+        <div>
+          <label htmlFor="Observação" className="block text-sm font-medium text-gray-700 mb-1">
+            Observação
+          </label>
+          <input
+            type="text"
+            id="Observação"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            value={chamado.observacao}
+            onChange={(e) => onChange({ ...chamado, observacao: e.target.value })}
+          />
+        </div>
       </div>
 
       <div className="mt-6 flex justify-end space-x-3">
