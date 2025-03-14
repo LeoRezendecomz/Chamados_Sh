@@ -8,9 +8,20 @@ export interface Chamado {
   pendencia_retorno: 'Fácil' | 'Nordeste';
   usuario_resp: string;
   status: 'Aberto' | 'Concluído';
+  observacao: string;
 }
 
-export type NewChamado = Omit<Chamado, 'id'>;
+export interface NewChamado {
+  chamado_facil: string;
+  chamado_sd: string;
+  titulo: string;
+  data_abertura: string;
+  cumpriu_sla: 'Sim' | 'Não';
+  pendencia_retorno: 'Fácil' | 'Nordeste';
+  usuario_resp: string;
+  status: 'Aberto' | 'Concluído';
+  observacao: string;
+}
 
 export interface ChamadoStats {
   abertos: number;
