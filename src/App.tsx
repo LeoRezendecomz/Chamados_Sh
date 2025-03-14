@@ -29,7 +29,8 @@ function App() {
     cumpriu_sla: 'Sim',
     pendencia_retorno: 'Fácil',
     usuario_resp: '',
-    status: 'Aberto'
+    status: 'Aberto',
+    observacao:''
   });
 
   useEffect(() => {
@@ -89,7 +90,8 @@ function App() {
         cumpriu_sla: 'Sim',
         pendencia_retorno: 'Fácil',
         usuario_resp: '',
-        status: 'Aberto'
+        status: 'Aberto',
+        observacao:''
       });
       setIsAddingTicket(false);
     } catch (error) {
@@ -231,11 +233,14 @@ function App() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Chamado SD</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Título</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Data de Abertura</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Cumpriu o SLA</th>
+                  {/* <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Cumpriu o SLA</th> */}
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Pendência de Retorno</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Usuário Resp</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Ações</th>
+                  {/* <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Ações</th> */}
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900"></th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Observação</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -244,9 +249,9 @@ function App() {
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.chamado_facil}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.chamado_sd}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{ticket.titulo}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{ticket.data_abertura}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                        {editingSLA === ticket.id ? (
+                    <td className="px-3 py-3 text-sm text-gray-900">{ticket.data_abertura}</td>
+                    {/* <td className="px-4 py-3 text-sm text-gray-900">
+                     {editingSLA === ticket.id ? (
                           <div className="flex gap-2">
                             <select
                               className="border rounded-md px-2 py-1"
@@ -275,8 +280,8 @@ function App() {
                               <Edit2 size={16} />
                             </button>
                           </div>
-                        )}
-                      </td>
+                        )} 
+                      </td> */}
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         ticket.pendencia_retorno === 'Nordeste' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                       }`}>
@@ -344,6 +349,7 @@ function App() {
                           </button>
                         )}
                       </td>
+                      <td className="px-1 py-3 text-sm text-gray-900 ">{ticket.observacao}</td>
                     </tr>
                   ))}
                 </tbody>
