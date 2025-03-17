@@ -187,12 +187,12 @@ function App() {
         <div className="flex flex-col mb-8">
           {/* Botão acima do título */}
           <div className="w-full flex justify-end mb-4">
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-            >
-              Sair
-            </button>
+          <button
+            onClick={handleLogout}
+             className="px-2 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+            Sair
+          </button>
           </div>
   
           {/* Título com sombra percorrendo a página completamente */}
@@ -201,7 +201,7 @@ function App() {
               Controle de Chamados (Nordeste/Fácil)
             </h1>
           </div>
-        </div>
+        </div
         
         <ChamadoStatsComponent stats={stats} />
         
