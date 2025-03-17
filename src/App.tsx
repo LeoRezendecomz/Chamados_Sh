@@ -201,7 +201,7 @@ function App() {
               Controle de Chamados (Nordeste/Fácil)
             </h1>
           </div>
-        </div
+        </div>
         
         <ChamadoStatsComponent stats={stats} />
         
